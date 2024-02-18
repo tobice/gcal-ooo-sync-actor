@@ -1,0 +1,18 @@
+.idea
+storage
+apify_storage
+crawlee_storage
+node_modules
+dist
+tsconfig.tsbuildinfo
+storage/*
+!storage/key_value_stores
+storage/key_value_stores/*
+!storage/key_value_stores/default
+storage/key_value_stores/default/*
+!storage/key_value_stores/default/INPUT.json
+
+.env.localhost
+
+# Added by Apify CLI
+.venv
