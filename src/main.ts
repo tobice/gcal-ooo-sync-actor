@@ -1,13 +1,11 @@
 import { Actor, log } from 'apify';
-import { google } from 'googleapis';
 import * as process from 'process';
 import ow from 'ow';
 
 // @ts-ignore
 import { apifyGoogleAuth } from './google-auth/main.js';
 import { owCheck } from './utils/owCheck.js';
-
-const { calendar } = google;
+import { createCalendarService } from './CalendarService.js';
 
 await Actor.init();
 
@@ -22,30 +20,20 @@ await Actor.init();
         credentials,
         scope: 'calendar'
     });
+    const calendarService = createCalendarService(oAuthClient);
 
     const calendarId = 'tobias.potocek@apify.com';
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const response = await calendar('v3').events.list({
-        auth: oAuthClient,
-        calendarId: calendarId,
-        timeMin: oneWeekAgo.toISOString(),
-        singleEvents: true,
-        orderBy: 'startTime'
-    });
+    const events = await calendarService.fetchEvents(calendarId);
 
-    if (!response?.data?.items) {
-        log.error('Response returned no events', response);
-        return
-    }
-
-    const events = response.data.items.map((item: any) => ({
-        id: item.id,
-        name: item.summary,
-        startDate: item.start.dateTime || item.start.date,
+    const data = events.map((event) => ({
+        id: event.id,
+        name: event.summary,
+        startDate: event.start?.dateTime || event.start?.date,
     }));
 
-    await Actor.pushData(events);
+    log.info('Events fetched', { data });
+
+    await Actor.pushData(data);
     log.info('Events successfully pushed');
 
     await Actor.exit();
