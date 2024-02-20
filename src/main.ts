@@ -1,12 +1,9 @@
 import { Actor, log } from 'apify';
 import * as process from 'process';
 import ow from 'ow';
-
-// @ts-ignore
-import { apifyGoogleAuth } from './google-auth/main.js';
 import { owCheck } from './utils/owCheck.js';
-import { createCalendarService } from './CalendarService.js';
 import { getActorInput } from './utils/getActorInput.js';
+import { createSyncService } from './SyncService.js';
 
 await Actor.init();
 
@@ -20,23 +17,10 @@ await Actor.init();
         redirect_uri: owCheck(process.env.OAUTH2_REDIRECT_URI, 'OAUTH2_REDIRECT_URI', ow.string.nonEmpty) as string,
     }
 
-    const oAuthClient = await apifyGoogleAuth({
-        credentials,
-        scope: 'calendar'
-    });
-    const calendarService = createCalendarService(oAuthClient);
+    const syncService = await createSyncService(credentials);
 
-    for (const calendarId of input.sourceCalendarIds) {
-        const events = await calendarService.fetchEvents(calendarId);
-
-        const data = events.map((event) => ({
-            id: event.id,
-            name: event.summary,
-            startDate: event.start?.dateTime || event.start?.date,
-        }));
-
-        log.info('Calendar synced', { calendarId, events: events.length });
-        await Actor.pushData(data);
+    for (const sourceCalendarId of input.sourceCalendarIds) {
+        await syncService.sync(sourceCalendarId, input.targetCalendarId, sourceCalendarId);
     }
 
     await Actor.exit();
