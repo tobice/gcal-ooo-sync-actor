@@ -2,8 +2,8 @@ const pCss = `color: #9fa5a9; line-height: 20px!important; text-align: center; f
 const inputCss = `padding-left: 40px; cursor: pointer; font-size: 13px;font-weight: 700;color: #fff;background-color: #5cb85c;border-color: #4cae4c;text-align: center;vertical-align: middle;touch-action: manipulation;padding: 10px 20px;border-radius: 3px;line-height: 1.42857; border: 1px solid transparent;`
 
 export const authorize = (authorizeUrl: string) =>
-`<!DOCTYPE html>
-<html>
+    `<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>Apify Google authorization</title>
@@ -21,8 +21,8 @@ export const authorize = (authorizeUrl: string) =>
 </html>`
 
 export const close = () =>
-`<!DOCTYPE html>
-<html>
+    `<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>Apify Google authorization</title>
