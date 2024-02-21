@@ -21,7 +21,7 @@ await Actor.init();
         redirect_uri: owCheck(process.env.OAUTH2_REDIRECT_URI, 'OAUTH2_REDIRECT_URI', ow.string.nonEmpty) as string,
     }
 
-    const syncService = await createSyncService(credentials);
+    const syncService = await createSyncService(credentials, input.daysToSync);
 
     for (const sourceCalendarId of input.sourceCalendarIds) {
         const displayName = displayNameOverrides.get(sourceCalendarId) ?? sourceCalendarId.split('@')[0];

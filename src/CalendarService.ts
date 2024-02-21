@@ -7,9 +7,9 @@ import { log as defaultLog } from 'apify';
 const log = defaultLog.child({ prefix: 'CalendarService' });
 
 export interface CalendarService {
-    fetchOooEvents: (calendarId: string) => Promise<Schema$Event[]>;
+    fetchOooEvents: (calendarId: string, timeMin: Date, timeMax: Date) => Promise<Schema$Event[]>;
 
-    queryEvents: (calendarId: string, query: string) => Promise<Schema$Event[]>;
+    queryEvents: (calendarId: string, query: string, timeMin: Date, timeMax: Date) => Promise<Schema$Event[]>;
 
     addEvents: (calendarId: string, events: Schema$Event[]) => Promise<void>;
 
@@ -18,36 +18,32 @@ export interface CalendarService {
 
 class DefaultCalendarService implements CalendarService {
     private api: Calendar;
-    private timeMin: Date;
-    private timeMax: Date;
 
-    constructor(api: Calendar, timeMin: Date, timeMax: Date) {
+    constructor(api: Calendar) {
         this.api = api;
-        this.timeMin = timeMin;
-        this.timeMax = timeMax;
     }
 
-    async fetchOooEvents(calendarId: string): Promise<Schema$Event[]> {
+    async fetchOooEvents(calendarId: string, timeMin: Date, timeMax: Date): Promise<Schema$Event[]> {
         // TODO: Implement pagination
         const res = await this.api.events.list({
             calendarId: calendarId,
             eventTypes: ['outOfOffice'],
             singleEvents: true,
             orderBy: 'startTime',
-            timeMin: this.timeMin.toISOString(),
-            timeMax: this.timeMax.toISOString(),
+            timeMin: timeMin.toISOString(),
+            timeMax: timeMax.toISOString(),
         });
         return res.data.items || [];
     }
 
-    async queryEvents(calendarId: string, query: string): Promise<Schema$Event[]> {
+    async queryEvents(calendarId: string, query: string, timeMin: Date, timeMax: Date): Promise<Schema$Event[]> {
         const res = await this.api.events.list({
             calendarId: calendarId,
             q: query,
             singleEvents: true,
             orderBy: 'startTime',
-            timeMin: this.timeMin.toISOString(),
-            timeMax: this.timeMax.toISOString(),
+            timeMin: timeMin.toISOString(),
+            timeMax: timeMax.toISOString(),
         });
         return res.data.items || [];
     }
@@ -71,9 +67,5 @@ class DefaultCalendarService implements CalendarService {
 
 export function createCalendarService(oAuthClient: OAuth2Client): CalendarService {
     const calendar = google.calendar({ version: 'v3', auth: oAuthClient });
-    return new DefaultCalendarService(
-        calendar,
-        // TODO: Replace these with constants
-        new Date(Date.now() - 1000 * 60 * 60 * 24),
-        new Date(Date.now() + 1000 * 60 * 60 * 24 * 30));
+    return new DefaultCalendarService(calendar);
 }

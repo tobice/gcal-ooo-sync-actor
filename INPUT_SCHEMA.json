@@ -1,34 +1,42 @@
 {
-  "title": "Sync configuration",
-  "description": "",
-  "type": "object",
-  "schemaVersion": 1,
-  "properties": {
-    "sourceCalendarIds": {
-      "sectionCaption": "Sync settings",
-      "title": "Source calendars",
-      "type": "array",
-      "description": "List of calendar IDs to sync OOO events from",
-      "editor": "stringList"
+    "title": "Sync configuration",
+    "description": "",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "sourceCalendarIds": {
+            "sectionCaption": "Sync settings",
+            "title": "Source calendars",
+            "type": "array",
+            "description": "List of calendar IDs to sync OOO events from",
+            "editor": "stringList"
+        },
+        "targetCalendarId": {
+            "title": "Target calendar",
+            "type": "string",
+            "description": "ID of the vacation calendar to sync OOO events to",
+            "editor": "textfield"
+        },
+        "displayNameOverrides": {
+            "title": "Display name overrides",
+            "type": "array",
+            "description": "Specify a name to be shown on the imported events instead of the calendar ID",
+            "editor": "keyValue",
+            "placeholderKey": "Calendar ID",
+            "placeholderValue": "Display name",
+            "uniqueItems": true
+        },
+        "daysToSync": {
+            "title": "Days to sync",
+            "type": "integer",
+            "description": "How many days to the future should by synced",
+            "default": 60,
+            "editor": "number"
+        }
     },
-    "targetCalendarId": {
-      "title": "Target calendar",
-      "type": "string",
-      "description": "ID of the vacation calendar to sync OOO events to",
-      "editor": "textfield"
-    },
-    "displayNameOverrides": {
-      "title": "Display name overrides",
-      "type": "array",
-      "description": "Specify a name to be shown on the imported events instead of the calendar ID",
-      "editor": "keyValue",
-      "placeholderKey": "Calendar ID",
-      "placeholderValue": "Display name",
-      "uniqueItems": true
-    }
-  },
-  "required": [
-    "sourceCalendarIds",
-    "targetCalendarId"
-  ]
+    "required": [
+        "sourceCalendarIds",
+        "targetCalendarId",
+        "daysToSync"
+    ]
 }

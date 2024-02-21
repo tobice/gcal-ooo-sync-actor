@@ -6,14 +6,20 @@ import { eventKey } from './utils/eventKey.js';
 import { calendar_v3 } from 'googleapis';
 import Schema$Event = calendar_v3.Schema$Event;
 import { toEmptyAllDayEvent } from './utils/toEmptyAllDayEvent.js';
+import dayjs from 'dayjs';
 
 const log = defaultLog.child({ prefix: 'SyncService' });
 
 class SyncService {
     private readonly calendarService: CalendarService
+    private readonly timeMin: Date;
+    private readonly timeMax: Date;
 
-    constructor(calendarService: CalendarService) {
+    constructor(calendarService: CalendarService, daysToSync: number) {
         this.calendarService = calendarService;
+        // Sync 7 days back in the past in case there are some retrospective changes
+        this.timeMin = dayjs().subtract(7, 'days').toDate();
+        this.timeMax = dayjs().add(daysToSync, 'days').toDate();
     }
 
     /**
@@ -28,12 +34,13 @@ class SyncService {
     async sync(sourceCalendarId: string, targetCalendarId: string, displayName: string) {
         log.info('Syncing calendar', { sourceCalendarId, targetCalendarId, displayName });
 
-        const oooEvents = await this.calendarService.fetchOooEvents(sourceCalendarId);
+        const oooEvents = await this.calendarService.fetchOooEvents(sourceCalendarId, this.timeMin, this.timeMax);
 
-        const existingTargetEvents = (await this.calendarService.queryEvents(targetCalendarId, displayName))
-            // Querying by display name might return some false positives as Google Calendar API searches for the
-            // display name in all fields.
-            .filter(event => event.summary?.startsWith(`${displayName}: `));
+        const existingTargetEvents =
+            (await this.calendarService.queryEvents(targetCalendarId, displayName, this.timeMin, this.timeMax))
+                // Querying by display name might return some false positives as Google Calendar API searches for the
+                // display name in all fields.
+                .filter(event => event.summary?.startsWith(`${displayName}: `));
 
         const expectedTargetEvents = oooEvents.map(event =>
             toEmptyAllDayEvent({
@@ -65,10 +72,10 @@ class SyncService {
     }
 }
 
-export async function createSyncService(credentials: GoogleAuthCredentials) {
+export async function createSyncService(credentials: GoogleAuthCredentials, daysToSync: number): Promise<SyncService> {
     const oAuthClient = await apifyGoogleAuth({
         credentials,
         scope: 'calendar'
     });
-    return new SyncService(createCalendarService(oAuthClient));
+    return new SyncService(createCalendarService(oAuthClient), daysToSync);
 }
