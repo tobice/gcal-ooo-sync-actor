@@ -11,6 +11,10 @@ await Actor.init();
     const input = await getActorInput();
     log.info('Actor input', { input });
 
+    const displayNameOverrides = new Map(input.displayNameOverrides.map(({ key, value }) => [key, value]));
+
+    // TODO: Check that display names do not conflict
+
     const credentials = {
         client_id: owCheck(process.env.OAUTH2_CLIENT_ID, 'OAUTH2_CLIENT_ID', ow.string.nonEmpty) as string,
         client_secret: owCheck(process.env.OAUTH2_CLIENT_SECRET, 'OAUTH2_CLIENT_SECRET', ow.string.nonEmpty) as string,
@@ -20,7 +24,8 @@ await Actor.init();
     const syncService = await createSyncService(credentials);
 
     for (const sourceCalendarId of input.sourceCalendarIds) {
-        await syncService.sync(sourceCalendarId, input.targetCalendarId, sourceCalendarId);
+        const displayName = displayNameOverrides.get(sourceCalendarId) ?? sourceCalendarId.split('@')[0];
+        await syncService.sync(sourceCalendarId, input.targetCalendarId, displayName);
     }
 
     await Actor.exit();
