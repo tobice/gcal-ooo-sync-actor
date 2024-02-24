@@ -174,4 +174,28 @@ describe('EventBuilder', () => {
             expect(event.end?.date).toBe('2024-02-13'); // End date is exclusive
         });
     });
+
+    describe('when the input is invalid', () => {
+        it('throws if "today" is invalid', () => {
+            expect(() => new EventBuilder('Test event', 'not-a-valid-date')).toThrow();
+        });
+
+        it('throws if from() gets an invalid value', () => {
+            expect(() => new EventBuilder()
+                .from('Mittwoch')
+                .toEvent()).toThrow();
+        });
+
+        it('throws if to() gets an invalid value', () => {
+            expect(() => new EventBuilder()
+                .to('Mittwoch')
+                .toEvent()).toThrow();
+        });
+
+        it('throws if on() gets an invalid value', () => {
+            expect(() => new EventBuilder()
+                .on('not-a-valid-date')
+                .toEvent()).toThrow();
+        });
+    });
 });
