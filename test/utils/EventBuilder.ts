@@ -8,90 +8,65 @@ type Schema$Event = calendar_v3.Schema$Event;
 
 type Weekday = 'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'|'Sunday';
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
 dayjs.extend(isoWeek);
 dayjs.extend(utc);
 dayjs.extend(customParseFormat); // Required to parse the today param.
 
-function checkWeekDay(day: string) {
-    if (!WEEKDAYS.includes(day)) {
-        throw Error(`Invalid weekday: ${day}`);
-    }
-}
-
-function getIsoWeekday(day: Weekday) {
-    return (WEEKDAYS.indexOf(day) + 1) % 7;
-}
-
-function checkTime(time: string) {
-    if (!/^\d{2}:\d{2}$/.test(time)) {
-        throw Error(`Invalid time: ${time}`);
-    }
-}
-
-/**
- * Helper for building test events.
- *
- * Its API is relying on weekdays rather than actual dates as for its use cases it's sufficient and more convenient.
- */
+/** Helper for building test events. */
 export class EventBuilder {
-    private readonly summary?: string;
     private readonly today: string;
 
-    private fromDay?: Weekday;
-    private toDay?: Weekday;
+    private readonly summary?: string;
+    private fromDay?: Weekday|string;
+    private toDay?: Weekday|string;
     private fromTime?: string;
     private toTime?: string;
 
     /**
+     * @param summary The summary of the event.
      * @param today The date to be used as the reference point for the workdays. E.g. when you are creating an event on
      *     Monday, it'll find the next Monday (including today). It should be in the format "YYYY-MM-DD".
-     * @param summary The summary of the event.
      */
-    constructor(today: string, summary?: string) {
+    constructor(summary?: string, today: string = dayjs().format('YYYY-MM-DD')) {
         this.summary = summary;
-        this.today = today;
+        this.today = checkDate(today);
     }
 
-    on(day: Weekday): this {
-        this.fromDay = day;
-        this.toDay = day; // For single day events
+    on(day: Weekday|string): this {
+        this.fromDay = checkWeekdayOrDate(day);
+        this.toDay = checkWeekdayOrDate(day); // For single day events
         return this;
     }
 
     from(dayOrTime: Weekday|string, time?: string): this {
         if (time) {
-            checkWeekDay(dayOrTime);
-            checkTime(time);
-            this.fromDay = dayOrTime as Weekday;
-            this.fromTime = time;
+            this.fromDay = checkWeekdayOrDate(dayOrTime);
+            this.fromTime = checkTime(time);
         } else {
-            if (WEEKDAYS.includes(dayOrTime)) {
-                this.fromDay = dayOrTime as Weekday;
+            if (isWeekdayOrDate(dayOrTime)) {
+                this.fromDay = dayOrTime;
             } else {
-                checkTime(dayOrTime);
-                this.fromTime = dayOrTime;
+                this.fromTime = checkTime(dayOrTime);
             }
         }
         return this;
     }
 
     /**
-     * Set the end of the event. For multi-day events, it's inclusive (e.g., from Monday to Friday includes both days).
+     * Set the end of the event.
+     *
+     * Note: Unlike Google Calendar Event itself, the end is inclusive for multi-day events. For example, from
+     * Monday to Friday includes both days.
      */
     to(dayOrTime: Weekday|string, time?: string): this {
         if (time) {
-            checkWeekDay(dayOrTime);
-            checkTime(time);
-            this.toDay = dayOrTime as Weekday;
-            this.toTime = time;
+            this.toDay = checkWeekdayOrDate(dayOrTime);
+            this.toTime = checkTime(time);
         } else {
-            if (WEEKDAYS.includes(dayOrTime)) {
-                this.toDay = dayOrTime as Weekday;
+            if (isWeekdayOrDate(dayOrTime)) {
+                this.toDay = dayOrTime;
             } else {
-                checkTime(dayOrTime);
-                this.toTime = dayOrTime;
+                this.toTime = checkTime(dayOrTime);
             }
         }
         return this;
@@ -104,44 +79,106 @@ export class EventBuilder {
             end: {},
         };
 
-        // Using UTC prevents local timezone from getting into the way when setting event times.
-        const today = dayjs.utc(this.today, 'YYYY-MM-DD');
+        const today = toDayJs(this.today);
 
-        if (!today.isValid()) {
-            throw Error(`Failed to parse the today date. Expected YYYY-MM-DD. Received: ${this.today}`);
-        }
+        let start = this.fromDay
+            ? isWeekday(this.fromDay)
+                ? findNextWeekday(today, this.fromDay as Weekday)
+                : toDayJs(this.fromDay)
+            : today;
 
-        function findNextWeekDay(day: Weekday) {
-            let next = today.isoWeekday(getIsoWeekday(day));
-            if (next.isBefore(today)) {
-                next = next.add(1, 'week');
-            }
-            return next;
-        }
-
-        let startDay = this.fromDay ? findNextWeekDay(this.fromDay) : today;
-        let endDay = this.toDay ? findNextWeekDay(this.toDay) : startDay;
-
+        let end = this.toDay
+            ? isWeekday(this.toDay)
+                ? findNextWeekday(today, this.toDay as Weekday)
+                : toDayJs(this.toDay)
+            : today;
 
         if (this.fromTime) {
             const [startHour, startMinute] = this.fromTime.split(':').map(Number);
-            startDay = startDay.hour(startHour).minute(startMinute);
-            event.start!!.dateTime = startDay.toISOString();
+            start = start.hour(startHour).minute(startMinute);
+            event.start!!.dateTime = start.toISOString();
         } else {
-            event.start!!.date = startDay.format('YYYY-MM-DD');
+            event.start!!.date = start.format('YYYY-MM-DD');
         }
 
         if (this.toTime) {
             const [endHour, endMinute] = this.toTime.split(':').map(Number);
             // Adjust for end time being on the next day (e.g., party scenario)
-            let adjustDay = this.fromDay === this.toDay && endHour < startDay.hour() ? 1 : 0;
-            endDay = endDay.add(adjustDay, 'day').hour(endHour).minute(endMinute);
-            event.end!!.dateTime = endDay.toISOString();
+            let adjustDay = this.fromDay === this.toDay && endHour < start.hour() ? 1 : 0;
+            end = end.add(adjustDay, 'day').hour(endHour).minute(endMinute);
+            event.end!!.dateTime = end.toISOString();
         } else {
             // For all-day events, the end date is exclusive
-            event.end!.date = endDay.add(1, 'day').format('YYYY-MM-DD');
+            event.end!.date = end.add(1, 'day').format('YYYY-MM-DD');
         }
 
         return event;
     }
 }
+
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function getWeekday(day: Weekday): number {
+    return (WEEKDAYS.indexOf(day) + 1) % 7;
+}
+
+function isWeekday(day: string): boolean {
+    return WEEKDAYS.includes(day);
+}
+
+function isDate(date: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(date);
+}
+
+function checkDate(date: string) {
+    if (!isDate(date)) {
+        throw Error(`Invalid date: ${date}. Expected format: YYYY-MM-DD`);
+    }
+
+    return date;
+}
+
+function isWeekdayOrDate(day: string): boolean {
+    return isWeekday(day) || isDate(day);
+}
+
+function checkWeekdayOrDate(day: string): Weekday|string {
+    if (!isWeekdayOrDate(day)) {
+        throw Error(`Expected either valid weekday or a date: ${day}`);
+    }
+
+    return isWeekday(day) ? day as Weekday : day;
+}
+
+function isTime(time: string): boolean {
+    return /^\d{2}:\d{2}$/.test(time);
+}
+
+function checkTime(time: string) {
+    if (!isTime(time)) {
+        throw Error(`Invalid time: ${time}. Expected format: HH:MM`);
+    }
+
+    return time;
+}
+
+function toDayJs(date: string): dayjs.Dayjs {
+    // Using UTC prevents local timezone from getting into the way when setting event times.
+    const result = dayjs.utc(checkDate(date), 'YYYY-MM-DD');
+
+    if (!result.isValid()) {
+        throw Error(); // Shouldn't really happen
+    }
+
+    return result;
+}
+
+function findNextWeekday(today: dayjs.Dayjs, day: Weekday) {
+    let next = today.isoWeekday(getWeekday(day));
+    if (next.isBefore(today)) {
+        next = next.add(1, 'week');
+    }
+    return next;
+}
+
+

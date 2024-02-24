@@ -2,14 +2,9 @@ import { eventKey } from './eventKey.js';
 import { EventBuilder } from '../../test/utils/EventBuilder.js';
 
 describe('eventKey', () => {
-    function createEvent(summary: string) {
-        const TODAY = '2024-02-05'; // Monday
-        return new EventBuilder(TODAY, summary);
-    }
-
     it('generates a key for a normal event', () => {
-        const event = createEvent('Company All-Hands')
-            .on('Monday')
+        const event = new EventBuilder('Company All-Hands')
+            .on('2024-02-05')
             .from('16:00')
             .to('17:00')
             .toEvent();
@@ -19,9 +14,9 @@ describe('eventKey', () => {
     });
 
     it('generates a key for a multi-day event', () => {
-        const event = createEvent('Offsite')
-            .from('Monday')
-            .to('Wednesday')
+        const event = new EventBuilder('Offsite')
+            .from('2024-02-05')
+            .to('2024-02-07')
             .toEvent();
 
         const key = eventKey(event);
