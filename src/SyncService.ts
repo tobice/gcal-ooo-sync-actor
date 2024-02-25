@@ -7,6 +7,7 @@ import { calendar_v3 } from 'googleapis';
 import Schema$Event = calendar_v3.Schema$Event;
 import { toEmptyAllDayEvent } from './utils/toEmptyAllDayEvent.js';
 import dayjs from 'dayjs';
+import { isInWorkingHours } from './utils/isInWorkingHours.js';
 
 const log = defaultLog.child({ prefix: 'SyncService' });
 
@@ -34,7 +35,12 @@ class SyncService {
     async sync(sourceCalendarId: string, targetCalendarId: string, displayName: string) {
         log.info('Syncing calendar', { sourceCalendarId, targetCalendarId, displayName });
 
-        const oooEvents = await this.calendarService.fetchOooEvents(sourceCalendarId, this.timeMin, this.timeMax);
+        // TODO: Get this from input
+        const workingHours = { start: '09:00', end: '16:00'};
+
+        const oooEvents =
+            (await this.calendarService.fetchOooEvents(sourceCalendarId, this.timeMin, this.timeMax))
+                .filter(event => isInWorkingHours(event, workingHours));
 
         const existingTargetEvents =
             (await this.calendarService.queryEvents(targetCalendarId, displayName, this.timeMin, this.timeMax))
