@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek.js';
 import utc from 'dayjs/plugin/utc.js';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
+import timezone from 'dayjs/plugin/timezone.js';
 
 type Schema$Event = calendar_v3.Schema$Event;
 
@@ -11,10 +12,12 @@ type Weekday = 'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'|'Su
 dayjs.extend(isoWeek);
 dayjs.extend(utc);
 dayjs.extend(customParseFormat); // Required to parse the today param.
+dayjs.extend(timezone);
 
 /** Helper for building test events. */
 export class EventBuilder {
     private readonly today: string;
+    private readonly timezone: string;
 
     private readonly summary?: string;
     private fromDay?: Weekday|string;
@@ -26,10 +29,13 @@ export class EventBuilder {
      * @param summary The summary of the event.
      * @param today The date to be used as the reference point for the workdays. E.g. when you are creating an event on
      *     Monday, it'll find the next Monday (including today). It should be in the format "YYYY-MM-DD".
+     * @param timezone
+     *
      */
-    constructor(summary?: string, today: string = dayjs().format('YYYY-MM-DD')) {
+    constructor(summary?: string, today: string = dayjs().format('YYYY-MM-DD'), timezone = 'Europe/Prague') {
         this.summary = summary;
         this.today = checkDate(today);
+        this.timezone = timezone;
     }
 
     on(day: Weekday|string): this {
@@ -79,24 +85,24 @@ export class EventBuilder {
             end: {},
         };
 
-        const today = toDayJs(this.today);
+        const today = toDayJs(this.today, this.timezone);
 
         let start = this.fromDay
             ? isWeekday(this.fromDay)
                 ? findNextWeekday(today, this.fromDay as Weekday)
-                : toDayJs(this.fromDay)
+                : toDayJs(this.fromDay, this.timezone)
             : today;
 
         let end = this.toDay
             ? isWeekday(this.toDay)
                 ? findNextWeekday(today, this.toDay as Weekday)
-                : toDayJs(this.toDay)
+                : toDayJs(this.toDay, this.timezone)
             : today;
 
         if (this.fromTime) {
             const [startHour, startMinute] = this.fromTime.split(':').map(Number);
             start = start.hour(startHour).minute(startMinute);
-            event.start!!.dateTime = start.toISOString();
+            event.start!!.dateTime = start.format();
         } else {
             event.start!!.date = start.format('YYYY-MM-DD');
         }
@@ -106,7 +112,7 @@ export class EventBuilder {
             // Adjust for end time being on the next day (e.g., party scenario)
             let adjustDay = this.fromDay === this.toDay && endHour < start.hour() ? 1 : 0;
             end = end.add(adjustDay, 'day').hour(endHour).minute(endMinute);
-            event.end!!.dateTime = end.toISOString();
+            event.end!!.dateTime = end.format();
         } else {
             // For all-day events, the end date is exclusive
             event.end!.date = end.add(1, 'day').format('YYYY-MM-DD');
@@ -162,9 +168,8 @@ function checkTime(time: string) {
     return time;
 }
 
-function toDayJs(date: string): dayjs.Dayjs {
-    // Using UTC prevents local timezone from getting into the way when setting event times.
-    const result = dayjs.utc(checkDate(date), 'YYYY-MM-DD');
+function toDayJs(date: string, timezone: string): dayjs.Dayjs {
+    const result = dayjs.tz(checkDate(date), 'YYYY-MM-DD', timezone).startOf('day');
 
     if (!result.isValid()) {
         throw Error(); // Shouldn't really happen

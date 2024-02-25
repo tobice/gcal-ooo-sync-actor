@@ -1,20 +1,25 @@
 import { EventBuilder } from './EventBuilder.js';
+import dayjs from 'dayjs';
 
 describe('EventBuilder', () => {
     describe('when using full dates', () => {
+        function createEvent(summary = 'Test event') {
+            return new EventBuilder(summary, dayjs().format('YYYY-MM-DD'), 'Europe/Prague');
+        }
+
         it('creates an event', () => {
-            const event = new EventBuilder()
+            const event = createEvent()
                 .on('2024-02-05')
                 .from('09:00')
                 .to('10:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T09:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-05T10:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T09:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-05T10:00:00+01:00');
         });
 
         it('creates an all-day event', () => {
-            const event = new EventBuilder()
+            const event = createEvent()
                 .on('2024-02-05')
                 .toEvent();
 
@@ -23,7 +28,7 @@ describe('EventBuilder', () => {
         });
 
         it('creates an all-day multi-day event', () => {
-            const event = new EventBuilder()
+            const event = createEvent()
                 .from('2024-02-05')
                 .to('2024-02-10')
                 .toEvent();
@@ -33,24 +38,24 @@ describe('EventBuilder', () => {
         });
 
         it('creates an event over midnight', () => {
-            const event = new EventBuilder()
+            const event = createEvent()
                 .on('2024-02-05')
                 .from('16:00')
                 .to('02:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-06T02:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-06T02:00:00+01:00');
         });
 
         it('creates a multi-day event with specific times', () => {
-            const event = new EventBuilder()
+            const event = createEvent()
                 .from('2024-02-05', '16:00')
                 .to('2024-02-07', '02:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00+01:00');
         });
     });
 
@@ -74,8 +79,8 @@ describe('EventBuilder', () => {
                 .to('10:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T09:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-05T10:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T09:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-05T10:00:00+01:00');
         });
 
         it('creates an event tomorrow', () => {
@@ -85,8 +90,8 @@ describe('EventBuilder', () => {
                 .to('10:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-06T09:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-06T10:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-06T09:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-06T10:00:00+01:00');
         });
 
         it('creates an all-day event', () => {
@@ -115,8 +120,8 @@ describe('EventBuilder', () => {
                 .to('02:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-06T02:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-06T02:00:00+01:00');
         });
 
         it('creates a multi-day event with specific times', () => {
@@ -125,8 +130,8 @@ describe('EventBuilder', () => {
                 .to('Wednesday', '02:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00+01:00');
         });
 
         it('creates a multi-day event spanning into the next week', () => {
@@ -135,8 +140,8 @@ describe('EventBuilder', () => {
                 .to('Wednesday', '02:00')
                 .toEvent();
 
-            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00.000Z');
-            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00.000Z');
+            expect(event.start?.dateTime).toBe('2024-02-05T16:00:00+01:00');
+            expect(event.end?.dateTime).toBe('2024-02-07T02:00:00+01:00');
         });
     });
 

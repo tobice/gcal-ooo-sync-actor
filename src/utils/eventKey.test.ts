@@ -10,7 +10,7 @@ describe('eventKey', () => {
             .toEvent();
 
         const key = eventKey(event);
-        expect(key).toBe('2024-02-05T16:00:00.000Z-2024-02-05T17:00:00.000Z-Company All-Hands');
+        expect(key).toBe('2024-02-05T16:00:00+01:00-2024-02-05T17:00:00+01:00-Company All-Hands');
     });
 
     it('generates a key for a multi-day event', () => {
