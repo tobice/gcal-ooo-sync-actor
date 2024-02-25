@@ -1,18 +1,11 @@
 import { calendar_v3 } from 'googleapis';
-import dayjs from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek.js';
-import utc from 'dayjs/plugin/utc.js';
-import customParseFormat from 'dayjs/plugin/customParseFormat.js';
-import timezone from 'dayjs/plugin/timezone.js';
+import dayjs from '../../src/utils/dayjs.js';
 
 type Schema$Event = calendar_v3.Schema$Event;
 
 type Weekday = 'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'|'Sunday';
 
-dayjs.extend(isoWeek);
-dayjs.extend(utc);
-dayjs.extend(customParseFormat); // Required to parse the today param.
-dayjs.extend(timezone);
+
 
 /** Helper for building test events. */
 export class EventBuilder {
