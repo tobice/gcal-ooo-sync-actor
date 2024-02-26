@@ -32,6 +32,22 @@
             "description": "How many days to the future should by synced",
             "default": 60,
             "editor": "number"
+        },
+        "workHoursStart": {
+            "title": "Start of working hours (HH:mm)",
+            "type": "string",
+            "description": "Events outside working hours are not synced",
+            "default": "09:00",
+            "editor": "textfield",
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$"
+        },
+        "workHoursEnd": {
+            "title": "End of working hours (HH:mm)",
+            "type": "string",
+            "description": "Events outside working hours are not synced",
+            "default": "16:00",
+            "editor": "textfield",
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$"
         }
     },
     "required": [

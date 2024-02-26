@@ -11,6 +11,14 @@ await Actor.init();
     const input = await getActorInput();
     log.info('Actor input', { input });
 
+    const syncConfig = {
+        daysToSync: input.daysToSync,
+        workingHours: {
+            start: input.workingHoursStart,
+            end: input.workingHoursEnd
+        }
+    }
+
     const displayNameOverrides = new Map(input.displayNameOverrides.map(({ key, value }) => [key, value]));
 
     // TODO: Check that display names do not conflict
@@ -21,7 +29,7 @@ await Actor.init();
         redirect_uri: owCheck(process.env.OAUTH2_REDIRECT_URI, 'OAUTH2_REDIRECT_URI', ow.string.nonEmpty) as string,
     }
 
-    const syncService = await createSyncService(credentials, input.daysToSync);
+    const syncService = await createSyncService(credentials, syncConfig);
 
     for (const sourceCalendarId of input.sourceCalendarIds) {
         const displayName = displayNameOverrides.get(sourceCalendarId) ?? sourceCalendarId.split('@')[0];

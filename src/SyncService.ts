@@ -7,20 +7,28 @@ import { calendar_v3 } from 'googleapis';
 import Schema$Event = calendar_v3.Schema$Event;
 import { toEmptyAllDayEvent } from './utils/toEmptyAllDayEvent.js';
 import dayjs from 'dayjs';
-import { isInWorkingHours } from './utils/isInWorkingHours.js';
+import { isInWorkingHours, WorkingHours } from './utils/isInWorkingHours.js';
 
 const log = defaultLog.child({ prefix: 'SyncService' });
 
+interface SyncConfig {
+    daysToSync: number;
+    workingHours: WorkingHours;
+}
+
 class SyncService {
     private readonly calendarService: CalendarService
+
     private readonly timeMin: Date;
     private readonly timeMax: Date;
+    private readonly workingHours: WorkingHours;
 
-    constructor(calendarService: CalendarService, daysToSync: number) {
+    constructor(calendarService: CalendarService, {  daysToSync, workingHours }: SyncConfig) {
         this.calendarService = calendarService;
         // Sync 7 days back in the past in case there are some retrospective changes
         this.timeMin = dayjs().subtract(7, 'days').toDate();
         this.timeMax = dayjs().add(daysToSync, 'days').toDate();
+        this.workingHours = workingHours;
     }
 
     /**
@@ -35,12 +43,9 @@ class SyncService {
     async sync(sourceCalendarId: string, targetCalendarId: string, displayName: string) {
         log.info('Syncing calendar', { sourceCalendarId, targetCalendarId, displayName });
 
-        // TODO: Get this from input
-        const workingHours = { start: '09:00', end: '16:00'};
-
         const oooEvents =
             (await this.calendarService.fetchOooEvents(sourceCalendarId, this.timeMin, this.timeMax))
-                .filter(event => isInWorkingHours(event, workingHours));
+                .filter(event => isInWorkingHours(event, this.workingHours));
 
         const existingTargetEvents =
             (await this.calendarService.queryEvents(targetCalendarId, displayName, this.timeMin, this.timeMax))
@@ -78,10 +83,10 @@ class SyncService {
     }
 }
 
-export async function createSyncService(credentials: GoogleAuthCredentials, daysToSync: number): Promise<SyncService> {
+export async function createSyncService(credentials: GoogleAuthCredentials, config: SyncConfig): Promise<SyncService> {
     const oAuthClient = await apifyGoogleAuth({
         credentials,
         scope: 'calendar'
     });
-    return new SyncService(createCalendarService(oAuthClient), daysToSync);
+    return new SyncService(createCalendarService(oAuthClient), config);
 }

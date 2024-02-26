@@ -9,7 +9,9 @@ interface ActorInput {
     sourceCalendarIds: string[],
     targetCalendarId: string,
     displayNameOverrides: KeyValue[],
-    daysToSync: number
+    daysToSync: number,
+    workingHoursStart: string,
+    workingHoursEnd: string
 }
 
 export async function getActorInput(): Promise<ActorInput> {
