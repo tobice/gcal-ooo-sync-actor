@@ -33,7 +33,7 @@
             "default": 60,
             "editor": "number"
         },
-        "workHoursStart": {
+        "workingHoursStart": {
             "title": "Start of working hours (HH:mm)",
             "type": "string",
             "description": "Events outside working hours are not synced",
@@ -41,7 +41,7 @@
             "editor": "textfield",
             "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$"
         },
-        "workHoursEnd": {
+        "workingHoursEnd": {
             "title": "End of working hours (HH:mm)",
             "type": "string",
             "description": "Events outside working hours are not synced",
