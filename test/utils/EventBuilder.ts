@@ -25,7 +25,11 @@ export class EventBuilder {
      * @param timezone
      *
      */
-    constructor(summary?: string, today: string = dayjs().format('YYYY-MM-DD'), timezone = 'Europe/Prague') {
+    constructor(
+        summary?: string,
+        today: string = '2024-02-05', // The default reference point is a Monday so that the builder behaves intuitively
+        timezone = 'Europe/Prague'
+    ) {
         this.summary = summary;
         this.today = checkDate(today);
         this.timezone = timezone;
