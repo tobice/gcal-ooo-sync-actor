@@ -8,6 +8,7 @@ import Schema$Event = calendar_v3.Schema$Event;
 import { toEmptyAllDayEvent } from './utils/toEmptyAllDayEvent.js';
 import dayjs from 'dayjs';
 import { isInWorkingHours, WorkingHours } from './utils/isInWorkingHours.js';
+import { getApproximateTimeSuffix } from './utils/getApproximateTime.js';
 
 const log = defaultLog.child({ prefix: 'SyncService' });
 
@@ -56,7 +57,7 @@ class SyncService {
         const expectedTargetEvents = oooEvents.map(event =>
             toEmptyAllDayEvent({
                 ...event,
-                summary: `${displayName}: ${event.summary}`,
+                summary: `${displayName}: ${event.summary}${getApproximateTimeSuffix(event)}`,
             }));
 
         const existingTargetEventsMap = new Map(existingTargetEvents.map(event => [eventKey(event), event]));

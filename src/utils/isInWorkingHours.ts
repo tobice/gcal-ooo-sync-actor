@@ -1,7 +1,7 @@
 import { calendar_v3 } from 'googleapis';
 import Schema$Event = calendar_v3.Schema$Event;
 import dayjs from '../utils/dayjs.js';
-import { log } from 'apify';
+import { convertToDayjsWithUTCOffset } from './convertToDayjsWithUTCOffset.js';
 
 export interface WorkingHours {
     /** The start of the working hours in the format "HH:MM", for example 09:00 */
@@ -20,10 +20,10 @@ export function isInWorkingHours(event: Schema$Event, workingHours: WorkingHours
     // Unify start/end between all-day and non-all-day events.
     let start = event.start?.date ?
         dayjs(`${event.start.date}`).startOf('day') : // Treat all-day events as starting at the beginning of the day.
-        toDayjsWithUTCOffset(event.start!.dateTime!);
+        convertToDayjsWithUTCOffset(event.start!.dateTime!);
     const end = event.end?.date ?
         dayjs(`${event.end.date}`).startOf('day') : // Treat all-day events as starting at the beginning of the day.
-        toDayjsWithUTCOffset(event.end!.dateTime!);
+        convertToDayjsWithUTCOffset(event.end!.dateTime!);
 
     function _isWorkingDay(date: dayjs.Dayjs) {
         return [0 /* = Sunday */, 6 /* = Saturday */].includes(date.day());
@@ -58,35 +58,4 @@ export function isInWorkingHours(event: Schema$Event, workingHours: WorkingHours
     }
 
     return start.isBefore(end);
-}
-
-/**
- * Converts an RFC 3339 formatted string into a dayjs object.
- *
- * The conversion preserves the original timezone by explicitly setting the UTC offset (dayjs doesn't do that out of
- * the box). This is necessary for .format('HH:mm') to return local time that can be compared to working hours.
- */
-function toDayjsWithUTCOffset(dateTime: string): dayjs.Dayjs {
-    let d = dayjs(dateTime);
-
-    const utcOffset = extractUTCOffset(dateTime);
-
-    if (!utcOffset) {
-        log.warning('Unable to extract UTC offset; detecting working hours might not work', { dateTime });
-        return d;
-    }
-
-    return d.utcOffset(utcOffset);
-}
-
-function extractUTCOffset(dateTime: string) {
-    const regex = /(Z|([+-])(\d{2}):?(\d{2}))/;
-    const matches = dateTime.match(regex);
-
-    if (matches) {
-        // If 'Z', return it directly; otherwise, construct the offset string
-        return matches[0] === 'Z' ? 'Z' : `${matches[2]}${matches[3]}:${matches[4]}`;
-    } else {
-        return null; // No offset found
-    }
 }
