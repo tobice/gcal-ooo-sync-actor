@@ -10,6 +10,10 @@ import { log } from 'apify';
 export function convertToDayjsWithUTCOffset(dateTime: string): dayjs.Dayjs {
     let d = dayjs(dateTime);
 
+    if (!d.isValid()) {
+        throw new Error(`Invalid date-time string: ${dateTime}`);
+    }
+
     const utcOffset = extractUTCOffset(dateTime);
 
     if (!utcOffset) {

@@ -6,7 +6,7 @@ import timezone from 'dayjs/plugin/timezone.js';
 
 dayjs.extend(isoWeek);
 dayjs.extend(utc);
-dayjs.extend(customParseFormat); // Required to parse the today param.
+dayjs.extend(customParseFormat);
 dayjs.extend(timezone);
 
 export default dayjs;
