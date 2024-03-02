@@ -1,8 +1,8 @@
 {
 	"actorSpecification": 1,
-	"name": "gcal-ooo-sync-actor",
-	"title": "Google Calendar Out-of-office Sync Actor",
-	"description": "TBD",
+	"name": "gcal-ooo-sync",
+	"title": "Google Calendar Out-of-office Sync",
+	"description": "Sync Out-of-office events to a shared vacation Google Calendar",
 	"version": "0.0",
 	"meta": {
 		"templateId": "ts-start"
