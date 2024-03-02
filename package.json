@@ -13,7 +13,6 @@
 		"dayjs": "^1.11.10",
 		"google-auth-library": "^9.6.3",
 		"googleapis": "^133.0.0",
-		"ow": "^1.1.1",
 		"uuid-by-string": "^4.0.0"
 	},
 	"devDependencies": {

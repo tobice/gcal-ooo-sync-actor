@@ -1,9 +1,8 @@
 import { Actor, log } from 'apify';
 import * as process from 'process';
-import ow from 'ow';
-import { owCheck } from './utils/owCheck.js';
 import { getActorInput } from './utils/getActorInput.js';
 import { createSyncService } from './SyncService.js';
+import { checkStringNotEmpty } from './utils/check.js';
 
 await Actor.init();
 
@@ -24,9 +23,9 @@ await Actor.init();
     // TODO: Check that display names do not conflict
 
     const credentials = {
-        client_id: owCheck(process.env.OAUTH2_CLIENT_ID, 'OAUTH2_CLIENT_ID', ow.string.nonEmpty) as string,
-        client_secret: owCheck(process.env.OAUTH2_CLIENT_SECRET, 'OAUTH2_CLIENT_SECRET', ow.string.nonEmpty) as string,
-        redirect_uri: owCheck(process.env.OAUTH2_REDIRECT_URI, 'OAUTH2_REDIRECT_URI', ow.string.nonEmpty) as string,
+        client_id: checkStringNotEmpty(process.env.OAUTH2_CLIENT_ID, 'OAUTH2_CLIENT_ID'),
+        client_secret: checkStringNotEmpty(process.env.OAUTH2_CLIENT_SECRET, 'OAUTH2_CLIENT_SECRET'),
+        redirect_uri: checkStringNotEmpty(process.env.OAUTH2_REDIRECT_URI, 'OAUTH2_REDIRECT_URI'),
     }
 
     const syncService = await createSyncService(credentials, syncConfig);
