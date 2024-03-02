@@ -24,6 +24,18 @@ describe('toEmptyAllDayEvent', () => {
         expect(event.end?.date).toBe('2024-02-06'); // End date is exclusive
     });
 
+    it('keeps an all-day event with explicit start/end time as is', () => {
+        // Some all-day events have a specific start/end time
+        const event = toEmptyAllDayEvent(
+            new EventBuilder()
+                .from('2024-02-05', '00:00')
+                .to('2024-02-06', '00:00')
+                .toEvent());
+
+        expect(event.start?.date).toBe('2024-02-05');
+        expect(event.end?.date).toBe('2024-02-06');
+    });
+
     it('converts a multi-day event with specific start/end time to a multi-day all-day event', () => {
         const event = toEmptyAllDayEvent(
             new EventBuilder()
