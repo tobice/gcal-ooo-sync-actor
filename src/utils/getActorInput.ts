@@ -5,7 +5,7 @@ interface KeyValue {
     value: string
 }
 
-interface ActorInput {
+export interface ActorInput {
     sourceCalendarIds: string[],
     targetCalendarId: string,
     displayNameOverrides: KeyValue[],
