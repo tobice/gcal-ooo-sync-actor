@@ -18,12 +18,14 @@ jest.mock('googleapis', () => ({
 }));
 
 // Mock Actor Input
+const DEFAULT_VACATION_CALENDAR = "apify-vacations@apify.com";
+const DEFAULT_SOURCE_CALENDAR = "tobias.potocek@apify.com";
 const DEFAULT_ACTOR_INPUT = {
     "displayNameOverrides": [],
     "sourceCalendarIds": [
-        "tobias.potocek@apify.com"
+        DEFAULT_SOURCE_CALENDAR
     ],
-    "targetCalendarId": "apify-vacations@group.calendar.google.com",
+    "targetCalendarId": DEFAULT_VACATION_CALENDAR,
     "daysToSync": 60,
     "workingHoursStart": "09:00",
     "workingHoursEnd": "16:00"
@@ -47,23 +49,68 @@ describe('syncCalendars', () => {
         calendarFake = new GoogleCalendarFake();
     });
 
-    it('syncs an event', async () => {
+    it('syncs a new event to the vacation calendar', async () => {
         await calendarFake.events.insert({
-            calendarId: "calendar_a@gmail.com",
+            calendarId: DEFAULT_SOURCE_CALENDAR,
             requestBody: new EventBuilder("OOO").on("Monday").toEvent()
         });
 
-        setActorInput({
-            ...DEFAULT_ACTOR_INPUT,
-            sourceCalendarIds: ["calendar_a@gmail.com"],
-        });
-
-        expect((await calendarFake.events.list({ calendarId: "apify-vacations@group.calendar.google.com" })).data.items)
-            .toHaveLength(0);
+        setActorInput(DEFAULT_ACTOR_INPUT);
 
         await runActor();
 
-        expect((await calendarFake.events.list({ calendarId: "apify-vacations@group.calendar.google.com" })).data.items)
-            .toHaveLength(1);
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toEqual(expect.arrayContaining(
+                [expect.objectContaining({ summary: "tobias.potocek: OOO" })]
+            ));
     });
+
+    it('removes an outdated event from the vacation calendar', async () => {
+        await calendarFake.events.insert({
+            calendarId: DEFAULT_VACATION_CALENDAR,
+            requestBody: new EventBuilder("tobias.potocek: OOO").on("Monday").toEvent()
+        });
+
+        setActorInput(DEFAULT_ACTOR_INPUT);
+
+        await runActor();
+
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toHaveLength(0);
+    });
+
+    it('syncs only events in working hours', async () => {
+        await Promise.all([
+            new EventBuilder("Dentist").on("Monday").from("07:00").to("08:00").toEvent(),           // ✘
+            new EventBuilder("Kindergarten").on("Tuesday").from("11:00").to("13:00").toEvent(),     // ✔
+            new EventBuilder("Gym").on("Thursday").from("16:00").to("17:00").toEvent(),             // ✘
+            new EventBuilder("Friday off").on("Friday").toEvent(),                                  // ✔
+            new EventBuilder("Weekend party").on("Saturday").from("10:00").to("11:00").toEvent(),   // ✘
+            new EventBuilder("Vacation").from("2024-03-05").to("2024-03-10").toEvent()              // ✔
+        ].map(event => calendarFake.events.insert({
+            calendarId: DEFAULT_SOURCE_CALENDAR,
+            requestBody: event
+        })));
+
+        setActorInput(DEFAULT_ACTOR_INPUT);
+
+        await runActor();
+
+        const events = (await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items;
+        expect(events).toHaveLength(3);
+        expect(events)
+            .toEqual(expect.arrayContaining([
+                expect.objectContaining({ summary: "tobias.potocek: Kindergarten (lunch)" }),
+                expect.objectContaining({ summary: "tobias.potocek: Friday off" }),
+                expect.objectContaining({ summary: "tobias.potocek: Vacation" })]
+            ));
+    });
+
+    // TODO: uses display overrides
+
+    // TODO: ignores events not belonging to a person
+
+    // TODO: syncs events from multiple calendars
+
+    // TODO: converts to correct all-day events
 });
