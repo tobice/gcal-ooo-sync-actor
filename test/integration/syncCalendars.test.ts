@@ -4,6 +4,8 @@ import GoogleCalendarFake from '../utils/GoogleCalendarFake.js';
 import { Actor } from 'apify';
 import { ActorInput } from '../../src/utils/getActorInput.js';
 import { EventBuilder } from '../utils/EventBuilder.js';
+import { calendar_v3 } from 'googleapis';
+import Schema$Event = calendar_v3.Schema$Event;
 
 // Mock OAuth2Client. It can be empty as we override the whole Google API anyway
 jest.mock('../../src/google-auth/main.js', () => ({
@@ -216,5 +218,36 @@ describe('syncCalendars', () => {
                     end: { date: '2024-03-09' }
                 }),
             ]));
+    });
+
+    it('syncs all events even when pagination is needed', async () => {
+        // Set a small page size to force pagination
+        calendarFake = new GoogleCalendarFake(/* pageSize = */ 2);
+
+        // Insert enough events so that they won't fit into a single page
+        for (let i = 0; i < 5; i++) {
+            await calendarFake.events.insert({
+                calendarId: DEFAULT_SOURCE_CALENDAR,
+                requestBody: new EventBuilder(`Event ${i}`).on('Monday').toEvent()
+            });
+        }
+
+        setActorInput(DEFAULT_ACTOR_INPUT);
+
+        await runActor();
+
+        // As we're using the low level fake API, the small page size applies here as well, and we need to fetch the
+        // events by pages. We could simplify our work by somehow looking directly inside, but this is a more realistic.
+        let events: Schema$Event[] = [];
+        let pageToken = null;
+
+        do {
+            // @ts-ignore as pageToken type is broken
+            const response = await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR, pageToken });
+            events = events.concat(response.data.items);
+            pageToken = response.data.nextPageToken;
+        } while (pageToken);
+
+        expect(events).toHaveLength(5);
     });
 });

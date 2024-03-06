@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import Schema$Event = calendar_v3.Schema$Event;
 import Calendar = calendar_v3.Calendar;
 import { log as defaultLog } from 'apify';
+import Params$Resource$Events$List = calendar_v3.Params$Resource$Events$List;
 
 const log = defaultLog.child({ prefix: 'CalendarService' });
 
@@ -24,8 +25,7 @@ class DefaultCalendarService implements CalendarService {
     }
 
     async fetchOooEvents(calendarId: string, timeMin: Date, timeMax: Date): Promise<Schema$Event[]> {
-        // TODO: Implement pagination
-        const res = await this.api.events.list({
+       return this.listAll({
             calendarId: calendarId,
             eventTypes: ['outOfOffice'],
             singleEvents: true,
@@ -33,11 +33,10 @@ class DefaultCalendarService implements CalendarService {
             timeMin: timeMin.toISOString(),
             timeMax: timeMax.toISOString(),
         });
-        return res.data.items || [];
     }
 
     async queryEvents(calendarId: string, query: string, timeMin: Date, timeMax: Date): Promise<Schema$Event[]> {
-        const res = await this.api.events.list({
+        return this.listAll({
             calendarId: calendarId,
             q: query,
             singleEvents: true,
@@ -45,7 +44,31 @@ class DefaultCalendarService implements CalendarService {
             timeMin: timeMin.toISOString(),
             timeMax: timeMax.toISOString(),
         });
-        return res.data.items || [];
+    }
+
+    /** Helper that implements pagination to fetch all events using list() */
+    private async listAll(params: Params$Resource$Events$List): Promise<Schema$Event[]> {
+        let events: Schema$Event[] = [];
+        let pageToken: string | null | undefined = null; // Stupid Google API types 🤷
+
+        do {
+            try {
+                const newParams = { ...params }
+                if (pageToken) {
+                    newParams.pageToken = pageToken;
+                }
+
+                const response = await this.api.events.list(newParams);
+
+                events = events.concat(response.data.items || []);
+                pageToken = response.data.nextPageToken;
+            } catch (e) {
+                log.exception(e as Error, 'Failed to list events, continuing with what we have');
+                pageToken = null;
+            }
+        } while (pageToken);
+
+        return events;
     }
 
     async addEvents(calendarId: string, events: Schema$Event[]) {

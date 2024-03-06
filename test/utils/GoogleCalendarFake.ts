@@ -3,23 +3,39 @@ import Schema$Event = calendar_v3.Schema$Event;
 
 /** Fake implementation of Google Calendar V3 API */
 export default class GoogleCalendarFake {
-    events = new GoogleEventsFake();
+    readonly events: GoogleEventsFake;
+
+    constructor(pageSize: number = 100) {
+        this.events = new GoogleEventsFake(pageSize);
+    }
 }
 
 class GoogleEventsFake {
     // Map calendarId => events
     private readonly calendars: Map<string, Schema$Event[]> = new Map();
 
-    async list(request: { calendarId: string, query?: string }) {
-        let items = this.getEvents(request.calendarId);
+    constructor(readonly pageSize: number) {}
 
+    async list(request: { calendarId: string, query?: string, pageToken?: string }) {
+        let allItems = this.getEvents(request.calendarId);
+
+        // Filtering
         if (request.query) {
-            items = items.filter(event => event.summary?.includes(request.query!))
+            allItems = allItems.filter(event => event.summary?.includes(request.query!))
         }
 
         // TODO: Support eventType to filter out-of-office events only
 
-        return { data: { items } }
+        // Pagination
+        const startIndex = request.pageToken ? Number.parseInt(request.pageToken) : 0;
+        const nextStartIndex = startIndex + this.pageSize;
+        const items = allItems.slice(startIndex, nextStartIndex);
+
+        const nextPageToken = allItems.length > nextStartIndex ? nextStartIndex.toString() : null;
+
+        return {
+            data: { items, nextPageToken }
+        }
     }
 
     async delete(request: { calendarId: string, eventId: string }) {
