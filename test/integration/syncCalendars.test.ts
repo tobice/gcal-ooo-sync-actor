@@ -18,17 +18,17 @@ jest.mock('googleapis', () => ({
 }));
 
 // Mock Actor Input
-const DEFAULT_VACATION_CALENDAR = "apify-vacations@apify.com";
-const DEFAULT_SOURCE_CALENDAR = "tobias.potocek@apify.com";
+const DEFAULT_VACATION_CALENDAR = 'apify-vacations@apify.com';
+const DEFAULT_SOURCE_CALENDAR = 'john.doe@apify.com';
 const DEFAULT_ACTOR_INPUT = {
-    "displayNameOverrides": [],
-    "sourceCalendarIds": [
+    displayNameOverrides: [],
+    sourceCalendarIds: [
         DEFAULT_SOURCE_CALENDAR
     ],
-    "targetCalendarId": DEFAULT_VACATION_CALENDAR,
-    "daysToSync": 60,
-    "workingHoursStart": "09:00",
-    "workingHoursEnd": "16:00"
+    targetCalendarId: DEFAULT_VACATION_CALENDAR,
+    daysToSync: 60,
+    workingHoursStart: '09:00',
+    workingHoursEnd: '16:00'
 };
 
 function setActorInput(input: ActorInput) {
@@ -39,7 +39,7 @@ describe('syncCalendars', () => {
 
     beforeAll(() => {
         // Set up env variables
-        jest.resetModules(); // Clears cache
+        jest.resetModules(); // Clears cache for the variables to take effect.
         process.env.OAUTH2_CLIENT_ID = 'test_client_id.apps.googleusercontent.com';
         process.env.OAUTH2_CLIENT_SECRET = 'test_client_secret';
         process.env.OAUTH2_REDIRECT_URI = 'test_redirect_uri';
@@ -52,7 +52,7 @@ describe('syncCalendars', () => {
     it('syncs a new event to the vacation calendar', async () => {
         await calendarFake.events.insert({
             calendarId: DEFAULT_SOURCE_CALENDAR,
-            requestBody: new EventBuilder("OOO").on("Monday").toEvent()
+            requestBody: new EventBuilder('OOO').on('Monday').toEvent()
         });
 
         setActorInput(DEFAULT_ACTOR_INPUT);
@@ -61,14 +61,14 @@ describe('syncCalendars', () => {
 
         expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
             .toEqual(expect.arrayContaining(
-                [expect.objectContaining({ summary: "tobias.potocek: OOO" })]
+                [expect.objectContaining({ summary: 'john.doe: OOO' })]
             ));
     });
 
     it('removes an outdated event from the vacation calendar', async () => {
         await calendarFake.events.insert({
             calendarId: DEFAULT_VACATION_CALENDAR,
-            requestBody: new EventBuilder("tobias.potocek: OOO").on("Monday").toEvent()
+            requestBody: new EventBuilder('john.doe: OOO').on('Monday').toEvent()
         });
 
         setActorInput(DEFAULT_ACTOR_INPUT);
@@ -80,17 +80,21 @@ describe('syncCalendars', () => {
     });
 
     it('syncs only events in working hours', async () => {
-        await Promise.all([
-            new EventBuilder("Dentist").on("Monday").from("07:00").to("08:00").toEvent(),           // ✘
-            new EventBuilder("Kindergarten").on("Tuesday").from("11:00").to("13:00").toEvent(),     // ✔
-            new EventBuilder("Gym").on("Thursday").from("16:00").to("17:00").toEvent(),             // ✘
-            new EventBuilder("Friday off").on("Friday").toEvent(),                                  // ✔
-            new EventBuilder("Weekend party").on("Saturday").from("10:00").to("11:00").toEvent(),   // ✘
-            new EventBuilder("Vacation").from("2024-03-05").to("2024-03-10").toEvent()              // ✔
-        ].map(event => calendarFake.events.insert({
-            calendarId: DEFAULT_SOURCE_CALENDAR,
-            requestBody: event
-        })));
+        const sourceTestEvents = [
+            new EventBuilder('Dentist').on('Monday').from('07:00').to('08:00').toEvent(),           // ✘
+            new EventBuilder('Kindergarten').on('Tuesday').from('11:00').to('13:00').toEvent(),     // ✔
+            new EventBuilder('Gym').on('Thursday').from('16:00').to('17:00').toEvent(),             // ✘
+            new EventBuilder('Friday off').on('Friday').toEvent(),                                  // ✔
+            new EventBuilder('Weekend party').on('Saturday').from('10:00').to('11:00').toEvent(),   // ✘
+            new EventBuilder('Vacation').from('2024-03-05').to('2024-03-10').toEvent()              // ✔
+        ]
+
+        for (const event of sourceTestEvents) {
+            await calendarFake.events.insert({
+                calendarId: DEFAULT_SOURCE_CALENDAR,
+                requestBody: event
+            });
+        }
 
         setActorInput(DEFAULT_ACTOR_INPUT);
 
@@ -100,17 +104,117 @@ describe('syncCalendars', () => {
         expect(events).toHaveLength(3);
         expect(events)
             .toEqual(expect.arrayContaining([
-                expect.objectContaining({ summary: "tobias.potocek: Kindergarten (lunch)" }),
-                expect.objectContaining({ summary: "tobias.potocek: Friday off" }),
-                expect.objectContaining({ summary: "tobias.potocek: Vacation" })]
+                expect.objectContaining({ summary: 'john.doe: Kindergarten (lunch)' }),
+                expect.objectContaining({ summary: 'john.doe: Friday off' }),
+                expect.objectContaining({ summary: 'john.doe: Vacation' })]
             ));
     });
 
-    // TODO: uses display overrides
+    it('applies display overrides', async () => {
+        await calendarFake.events.insert({
+            calendarId: 'john.doe@apify.com',
+            requestBody: new EventBuilder('OOO').on('Monday').toEvent()
+        });
 
-    // TODO: ignores events not belonging to a person
+        setActorInput({
+            ...DEFAULT_ACTOR_INPUT,
+            sourceCalendarIds: [
+                'john.doe@apify.com'
+            ],
+            displayNameOverrides: [{ key: 'john.doe@apify.com', value: 'Johnny' }]
+        });
 
-    // TODO: syncs events from multiple calendars
+        await runActor();
 
-    // TODO: converts to correct all-day events
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toEqual(expect.arrayContaining(
+                [expect.objectContaining({ summary: 'Johnny: OOO' })]
+            ));
+    });
+
+    it('ignores vacation events belonging to somebody else', async () => {
+        await calendarFake.events.insert({
+            calendarId: DEFAULT_VACATION_CALENDAR,
+            requestBody: new EventBuilder('Jane: OOO').on('Monday').toEvent(),
+        });
+        await calendarFake.events.insert({
+            calendarId: DEFAULT_VACATION_CALENDAR,
+            requestBody: new EventBuilder('Adam: Dentist').on('Monday').from('09:00').to('10:00').toEvent(),
+        });
+
+        // Source calendar is intentionally empty
+
+        setActorInput(DEFAULT_ACTOR_INPUT);
+
+        await runActor();
+
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toEqual(expect.arrayContaining([
+                expect.objectContaining({ summary: 'Jane: OOO' }),
+                expect.objectContaining({ summary: 'Adam: Dentist' })
+            ]));
+    });
+
+    it('syncs events from multiple calendars', async () => {
+        await calendarFake.events.insert({
+            calendarId: 'jane.honda@apify.com',
+            requestBody: new EventBuilder('OOO').on('Monday').toEvent(),
+        });
+        await calendarFake.events.insert({
+            calendarId: 'adam.good@apify.com',
+            requestBody: new EventBuilder('Dentist').on('Monday').from('09:00').to('10:00').toEvent(),
+        });
+
+        setActorInput({
+            ...DEFAULT_ACTOR_INPUT,
+            sourceCalendarIds: ['jane.honda@apify.com', 'adam.good@apify.com' ]
+        });
+
+        await runActor();
+
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toEqual(expect.arrayContaining([
+                expect.objectContaining({ summary: 'jane.honda: OOO' }),
+                expect.objectContaining({ summary: 'adam.good: Dentist (morning)' })
+            ]));
+    });
+
+    it('converts source events to all-day events', async () => {
+        const sourceTestEvents = [
+            new EventBuilder('Kindergarten').on('2024-03-05').from('11:00').to('13:00').toEvent(),
+            new EventBuilder('Flight to Tokyo').from('2024-03-06', '15:00').to('2024-03-07', '10:00').toEvent(),
+            new EventBuilder('Friday off').from('2024-03-08', '00:00').to('2024-03-09', '00:00').toEvent(),
+        ]
+
+        for (const event of sourceTestEvents) {
+            await calendarFake.events.insert({
+                calendarId: DEFAULT_SOURCE_CALENDAR,
+                requestBody: event
+            });
+        }
+
+        setActorInput(DEFAULT_ACTOR_INPUT);
+
+        await runActor();
+
+        // Note that the end dates are always exclusive
+        expect((await calendarFake.events.list({ calendarId: DEFAULT_VACATION_CALENDAR })).data.items)
+            .toEqual(expect.arrayContaining([
+                expect.objectContaining({
+                    summary: 'john.doe: Kindergarten (lunch)',
+                    start: { date: '2024-03-05' },
+                    end: { date: '2024-03-06' }
+                }),
+                expect.objectContaining({
+                    summary: 'john.doe: Flight to Tokyo',
+                    start: { date: '2024-03-06' },
+                    end: { date: '2024-03-08' }
+                }),
+                expect.objectContaining({
+                    summary: 'john.doe: Friday off',
+                    start: { date: '2024-03-08' },
+                    end: { date: '2024-03-09' }
+                }),
+            ]));
+    });
 });
