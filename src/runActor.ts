@@ -3,12 +3,19 @@ import * as process from 'process';
 import { getActorInput } from './utils/getActorInput.js';
 import { createSyncService } from './SyncService.js';
 import { checkStringNotEmpty } from './utils/check.js';
+import { validateActorInput } from './utils/validateActorInput.js';
 
 export async function runActor() {
     await Actor.init();
 
     const input = await getActorInput();
     log.info('Actor input', { input });
+
+    try {
+        validateActorInput(input);
+    } catch (error: any) {
+        throw new Error(`Invalid actor input: ${error.message}`);
+    }
 
     const syncConfig = {
         daysToSync: input.daysToSync,
@@ -19,8 +26,6 @@ export async function runActor() {
     }
 
     const displayNameOverrides = new Map(input.displayNameOverrides.map(({ key, value }) => [key, value]));
-
-    // TODO: Check that display names do not conflict
 
     const credentials = {
         client_id: checkStringNotEmpty(process.env.OAUTH2_CLIENT_ID, 'OAUTH2_CLIENT_ID'),

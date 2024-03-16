@@ -10,6 +10,9 @@ export default class GoogleCalendarFake {
     }
 }
 
+// Made-up calendar ID that is used to test the error handling
+export const INACCESSIBLE_CALENDAR_ID = 'inaccessible-calendar-id@google.com';
+
 class GoogleEventsFake {
     // Map calendarId => events
     private readonly calendars: Map<string, Schema$Event[]> = new Map();
@@ -17,10 +20,6 @@ class GoogleEventsFake {
     constructor(readonly pageSize: number) {}
 
     async list(request: { calendarId: string, query?: string, pageToken?: string }) {
-        if (!request.calendarId) {
-            throw new Error('calendarId is required');
-        }
-
         let allItems = this.getEvents(request.calendarId);
 
         // Filtering
@@ -55,6 +54,10 @@ class GoogleEventsFake {
     }
 
     private getEvents(calendarId: string): Schema$Event[] {
+        if (calendarId === INACCESSIBLE_CALENDAR_ID) {
+            throw new Error('Calendar not found');
+        }
+
         if (!this.calendars.has(calendarId)) {
             this.calendars.set(calendarId, []);
         }

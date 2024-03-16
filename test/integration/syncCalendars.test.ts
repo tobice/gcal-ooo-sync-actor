@@ -1,6 +1,6 @@
 import { runActor } from '../../src/runActor.js';
 import process from 'process';
-import GoogleCalendarFake from '../utils/GoogleCalendarFake.js';
+import GoogleCalendarFake, { INACCESSIBLE_CALENDAR_ID } from '../utils/GoogleCalendarFake.js';
 import { Actor } from 'apify';
 import { ActorInput } from '../../src/utils/getActorInput.js';
 import { EventBuilder } from '../utils/EventBuilder.js';
@@ -169,7 +169,7 @@ describe('syncCalendars', () => {
 
         setActorInput({
             ...DEFAULT_ACTOR_INPUT,
-            sourceCalendarIds: ['jane.honda@apify.com', 'adam.good@apify.com' ]
+            sourceCalendarIds: ['jane.honda@apify.com', 'adam.good@apify.com']
         });
 
         await runActor();
@@ -251,12 +251,26 @@ describe('syncCalendars', () => {
         expect(events).toHaveLength(5);
     });
 
-    it('fails if provided empty calendar ID', async () => {
+    it('fails if provided invalid Actor input', async () => {
         setActorInput({
             ...DEFAULT_ACTOR_INPUT,
             sourceCalendarIds: [''],
         });
 
-        await expect(runActor()).rejects.toEqual(new Error('Failed to list events'));
+        await expect(runActor())
+            .rejects
+            .toEqual(new Error('Invalid actor input: Source calendar ID must be a valid email address'));
+    });
+
+    it('fails if Google API returns an error', async () => {
+        // Simulate a calendar that cannot be accessed
+        setActorInput({
+            ...DEFAULT_ACTOR_INPUT,
+            sourceCalendarIds: [INACCESSIBLE_CALENDAR_ID],
+        });
+
+        await expect(runActor())
+            .rejects
+            .toEqual(new Error('Failed to list events'));
     });
 });
