@@ -17,6 +17,10 @@ class GoogleEventsFake {
     constructor(readonly pageSize: number) {}
 
     async list(request: { calendarId: string, query?: string, pageToken?: string }) {
+        if (!request.calendarId) {
+            throw new Error('calendarId is required');
+        }
+
         let allItems = this.getEvents(request.calendarId);
 
         // Filtering

@@ -4,6 +4,8 @@ import Schema$Event = calendar_v3.Schema$Event;
 import Calendar = calendar_v3.Calendar;
 import { log as defaultLog } from 'apify';
 import Params$Resource$Events$List = calendar_v3.Params$Resource$Events$List;
+import { AxiosError } from "axios";
+
 
 const log = defaultLog.child({ prefix: 'CalendarService' });
 
@@ -15,6 +17,25 @@ export interface CalendarService {
     addEvents: (calendarId: string, events: Schema$Event[]) => Promise<void>;
 
     deleteEvents: (calendarId: string, events: Schema$Event[]) => Promise<void>;
+}
+
+export class CalendarServiceError extends Error {
+    public readonly causeError?: any;
+
+    constructor(
+        message: string,
+        public readonly params: object,
+        public readonly cause: any,
+    ) {
+        super(message);
+        this.params = params;
+        this.cause = cause;
+
+        // In case it's an (G)AxiosError, we can extract the response data.
+        if (cause.response?.data?.error) {
+            this.causeError = cause.response?.data;
+        }
+    }
 }
 
 class DefaultCalendarService implements CalendarService {
@@ -63,8 +84,7 @@ class DefaultCalendarService implements CalendarService {
                 events = events.concat(response.data.items || []);
                 pageToken = response.data.nextPageToken;
             } catch (e) {
-                log.exception(e as Error, 'Failed to list events, continuing with what we have');
-                pageToken = null;
+                throw new CalendarServiceError('Failed to list events', params, e as Error);
             }
         } while (pageToken);
 

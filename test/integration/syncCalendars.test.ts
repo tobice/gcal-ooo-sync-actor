@@ -250,4 +250,13 @@ describe('syncCalendars', () => {
 
         expect(events).toHaveLength(5);
     });
+
+    it('fails if provided empty calendar ID', async () => {
+        setActorInput({
+            ...DEFAULT_ACTOR_INPUT,
+            sourceCalendarIds: [''],
+        });
+
+        await expect(runActor()).rejects.toEqual(new Error('Failed to list events'));
+    });
 });
